@@ -1,0 +1,101 @@
+# Local infrastructure:     docker compose up -d            (Postgres + Redis only)
+# Full production-like stack: docker compose --profile full up --build
+#   → SPA on http://localhost:8080, API on http://localhost:3000
+name: ratemix
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ratemix
+      POSTGRES_PASSWORD: ratemix
+      POSTGRES_DB: ratemix
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ratemix -d ratemix']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    # BullMQ requires noeviction; cache keys carry their own TTLs.
+    command: ['redis-server', '--maxmemory-policy', 'noeviction', '--appendonly', 'yes']
+    ports:
+      - '6379:6379'
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    profiles: [full]
+    image: ratemix-api
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ['node_modules/.bin/prisma', 'migrate', 'deploy']
+    env_file:
+      - path: apps/api/.env
+        required: false
+    environment: &api-env
+      NODE_ENV: production
+      DATABASE_URL: postgresql://ratemix:ratemix@postgres:5432/ratemix?schema=public
+      REDIS_URL: redis://redis:6379
+      FRONTEND_URL: http://localhost:8080
+      CORS_ORIGINS: http://localhost:8080
+      OAUTH_REDIRECT_BASE_URL: http://localhost:8080
+      TRUST_PROXY: 'true'
+      RUN_WORKERS: 'false'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    profiles: [full]
+    image: ratemix-api
+    env_file:
+      - path: apps/api/.env
+        required: false
+    environment: *api-env
+    ports:
+      - '3000:3000'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  worker:
+    profiles: [full]
+    image: ratemix-api
+    command: ['node', 'dist/worker.js']
+    env_file:
+      - path: apps/api/.env
+        required: false
+    environment: *api-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  web:
+    profiles: [full]
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - '8080:80'
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  redisdata:

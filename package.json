@@ -1,0 +1,36 @@
+{
+  "name": "ratemix",
+  "version": "0.1.0",
+  "private": true,
+  "description": "RateMix: a personalized movie ratings aggregator (Vue 3 + NestJS + tRPC monorepo)",
+  "packageManager": "pnpm@12.3.4",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @ratemix/shared build && pnpm --parallel --filter @ratemix/shared --filter @ratemix/api --filter @ratemix/web dev",
+    "build": "pnpm --recursive build",
+    "typecheck": "pnpm --recursive typecheck",
+    "test": "pnpm --recursive test",
+    "test:e2e": "pnpm --filter @ratemix/web test:e2e",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:up": "docker compose up -d postgres redis",
+    "db:down": "docker compose down",
+    "db:migrate": "pnpm --filter @ratemix/api db:migrate",
+    "db:studio": "pnpm --filter @ratemix/api db:studio"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.10.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-vue": "^10.11.0",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.6",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.70.0",
+    "vue-eslint-parser": "^10.4.1"
+  }
+}

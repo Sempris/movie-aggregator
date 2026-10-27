@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @ratemix/shared build && pnpm exec vite build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/trpc/:path*", "destination": "https://ratemix-api.fly.dev/trpc/:path*" },
+    {
+      "source": "/auth/oauth/:path*",
+      "destination": "https://ratemix-api.fly.dev/auth/oauth/:path*"
+    },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

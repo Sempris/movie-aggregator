@@ -1,0 +1,15 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Dependencies that are allowed to run install scripts (pnpm 12+).
+allowBuilds:
+  '@prisma/engines': true
+  '@swc/core': true
+  esbuild: true
+  prisma: true
+  # Optional native accelerator for msgpackr (via BullMQ). The pure-JS fallback is used,
+  # so Windows machines don't need C++ build tools.
+  msgpackr-extract: false
+  # vue-demi's script only switches between Vue 2 and 3 builds; its default build targets Vue 3.
+  vue-demi: false

@@ -1,0 +1,23 @@
+[build]
+  base = "apps/web"
+  command = "pnpm --filter @ratemix/shared build && pnpm exec vite build"
+  publish = "dist"
+
+# Proxy the API through the SPA's own origin so the refresh cookie stays first-party.
+# Replace ratemix-api.fly.dev with your API host.
+[[redirects]]
+  from = "/trpc/*"
+  to = "https://ratemix-api.fly.dev/trpc/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/auth/oauth/*"
+  to = "https://ratemix-api.fly.dev/auth/oauth/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

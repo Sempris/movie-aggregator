@@ -1,0 +1,93 @@
+@import 'tailwindcss';
+
+/*
+ * RateMix design tokens. The interface is a mixing desk: an anodized faceplate,
+ * one identity color per rating source (a "channel"), and a single dark display
+ * window for the master output. Color on a channel always means that source.
+ */
+@theme static {
+  --font-sans: 'Archivo Variable', ui-sans-serif, system-ui, sans-serif;
+
+  --color-panel: #d9ddd6;
+  --color-strip: #eceee8;
+  --color-seam: #b6bbb2;
+  --color-well: #c3c8bf;
+  --color-ink: #1c2220;
+  --color-ink-2: #454f49;
+  --color-display: #1d2326;
+  --color-vfd: #7ff5da;
+  --color-vfd-dim: #2c4a45;
+  --color-alert: #9b2c1f;
+
+  --color-ch-tmdb: #0e7c86;
+  --color-ch-imdb: #a67a08;
+  --color-ch-rotten-tomatoes: #c13f2a;
+  --color-ch-metacritic: #5b4fa8;
+  --color-ch-trakt: #a3306a;
+
+  /* Modular scale, ratio 1.25 from a 16px base */
+  --text-xs: 0.8rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5625rem;
+  --text-2xl: 1.953rem;
+  --text-3xl: 2.441rem;
+  --text-4xl: 3.052rem;
+  --text-5xl: 3.815rem;
+}
+
+/* Score digits: Archivo's narrowest width with tabular figures, like meter readouts. */
+@utility numerals {
+  font-stretch: 62%;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+@utility display-condensed {
+  font-stretch: 75%;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+@utility wordmark {
+  font-stretch: 125%;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+@layer base {
+  html {
+    background: var(--color-panel);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    min-height: 100dvh;
+    line-height: 1.5;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-vfd);
+    color: var(--color-display);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

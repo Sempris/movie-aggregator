@@ -1,0 +1,40 @@
+# Fly.io config for the API and worker (one image, two process groups).
+# First deploy:  fly launch --no-deploy --config apps/api/fly.toml
+#                fly secrets set DATABASE_URL=… REDIS_URL=… JWT_ACCESS_SECRET=… TMDB_API_KEY=… --config apps/api/fly.toml
+#                fly deploy . --config apps/api/fly.toml --dockerfile apps/api/Dockerfile
+app = 'ratemix-api'
+primary_region = 'fra'
+
+[deploy]
+  release_command = 'node_modules/.bin/prisma migrate deploy'
+
+[env]
+  NODE_ENV = 'production'
+  PORT = '3000'
+  RUN_WORKERS = 'false'
+  TRUST_PROXY = 'true'
+  COOKIE_SECURE = 'true'
+
+[processes]
+  app = 'node dist/main.js'
+  worker = 'node dist/worker.js'
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+  [[http_service.checks]]
+    grace_period = '20s'
+    interval = '30s'
+    method = 'GET'
+    path = '/health'
+    timeout = '5s'
+
+[[vm]]
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1

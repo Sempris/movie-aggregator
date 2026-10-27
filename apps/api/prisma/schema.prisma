@@ -1,0 +1,166 @@
+// RateMix data model. Table and column names follow the technical plan (snake_case);
+// Prisma models use camelCase fields mapped onto them.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "cjs"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Movie {
+  id               String    @id @default(uuid()) @db.Uuid
+  tmdbId           Int       @unique @map("tmdb_id")
+  /// Canonical cross-source join key (nullable until TMDB details are fetched).
+  imdbId           String?   @unique @map("imdb_id")
+  title            String
+  originalTitle    String?   @map("original_title")
+  releaseYear      Int?      @map("release_year")
+  releaseDate      DateTime? @map("release_date") @db.Date
+  posterPath       String?   @map("poster_path")
+  backdropPath     String?   @map("backdrop_path")
+  overview         String?
+  runtimeMinutes   Int?      @map("runtime_minutes")
+  genres           String[]  @default([])
+  popularity       Float?
+  /// Set once full TMDB details (including imdb_id) have been stored.
+  detailsFetchedAt DateTime? @map("details_fetched_at")
+  /// Throttled "someone opened this title" marker; scheduled refreshes focus on viewed titles.
+  lastViewedAt     DateTime? @map("last_viewed_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  ratings     MovieRating[]
+  syncStates  MovieProviderSync[]
+  listEntries MovieListEntry[]
+
+  @@index([title])
+  @@index([lastViewedAt])
+  @@map("movies")
+}
+
+model RatingSource {
+  /// 'tmdb', 'imdb', 'rotten_tomatoes', 'metacritic', 'trakt', ...
+  id            String @id
+  displayName   String @map("display_name")
+  /// Which adapter/API delivers this source's numbers ('tmdb', 'omdb', 'trakt').
+  provider      String
+  description   String @default("")
+  scaleMin      Float  @map("scale_min")
+  scaleMax      Float  @map("scale_max")
+  rawFormat     String @map("raw_format")
+  /// Fallback weight if the user hasn't customized this source.
+  defaultWeight Float  @default(1) @map("default_weight")
+  sortOrder     Int    @default(0) @map("sort_order")
+
+  ratings     MovieRating[]
+  preferences UserSourcePreference[]
+
+  @@map("rating_sources")
+}
+
+model MovieRating {
+  id              String   @id @default(uuid()) @db.Uuid
+  movieId         String   @map("movie_id") @db.Uuid
+  sourceId        String   @map("source_id")
+  /// As returned by the source, on its native scale.
+  rawValue        Float    @map("raw_value")
+  /// Mapped onto the shared 0-100 scale at ingestion time.
+  normalizedValue Float    @map("normalized_value")
+  voteCount       Int?     @map("vote_count")
+  rawPayload      Json?    @map("raw_payload")
+  fetchedAt       DateTime @map("fetched_at")
+
+  movie  Movie        @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  source RatingSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([movieId, sourceId])
+  @@map("movie_ratings")
+}
+
+/// Ingestion bookkeeping per (movie, provider): drives scheduling and "ratings loading" states.
+model MovieProviderSync {
+  movieId       String    @map("movie_id") @db.Uuid
+  provider      String
+  /// queued | ok | not_found | skipped | deferred | error
+  status        String
+  queuedAt      DateTime? @map("queued_at")
+  lastAttemptAt DateTime? @map("last_attempt_at")
+  lastSuccessAt DateTime? @map("last_success_at")
+  lastError     String?   @map("last_error")
+
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@id([movieId, provider])
+  @@index([provider, lastAttemptAt])
+  @@map("movie_provider_sync")
+}
+
+/// Curated TMDB lists (trending, popular) refreshed by the catalog sync job.
+model MovieListEntry {
+  list     String
+  rank     Int
+  movieId  String   @map("movie_id") @db.Uuid
+  syncedAt DateTime @map("synced_at")
+
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@id([list, rank])
+  @@index([movieId])
+  @@map("movie_list_entries")
+}
+
+model User {
+  id                String   @id @default(uuid()) @db.Uuid
+  /// Nullable: some OAuth accounts don't expose an email.
+  email             String?  @unique
+  displayName       String?  @map("display_name")
+  /// 'password' | 'github' | 'google'
+  authProvider      String   @map("auth_provider")
+  providerAccountId String?  @map("provider_account_id")
+  passwordHash      String?  @map("password_hash")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  preferences   UserSourcePreference[]
+  refreshTokens RefreshToken[]
+
+  @@unique([authProvider, providerAccountId])
+  @@map("users")
+}
+
+model UserSourcePreference {
+  userId    String   @map("user_id") @db.Uuid
+  sourceId  String   @map("source_id")
+  enabled   Boolean
+  /// User override of rating_sources.default_weight.
+  weight    Float
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source RatingSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@id([userId, sourceId])
+  @@map("user_source_preferences")
+}
+
+/// Rotating refresh tokens; only a SHA-256 hash of each token is stored.
+model RefreshToken {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  tokenHash    String    @unique @map("token_hash")
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  replacedById String?   @map("replaced_by_id") @db.Uuid
+  userAgent    String?   @map("user_agent")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
