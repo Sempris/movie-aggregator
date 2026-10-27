@@ -318,6 +318,3 @@ scrapes Rotten Tomatoes, Metacritic, IMDb or Letterboxd.
 Review the TMDB, OMDb and Trakt terms before any commercial or public production use. Commercial use of TMDB
 requires a separate agreement, and republishing Rotten Tomatoes or Metacritic numbers relies on OMDb's
 arrangements with those parties. This is not legal advice.
-#   m o v i e - a g g r e g a t o r  
- #   m o v i e - a g g r e g a t o r  
- 
